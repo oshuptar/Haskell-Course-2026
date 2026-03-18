@@ -86,3 +86,17 @@ permutations _ []  = []
 permutations k (x:xs) 
     | k == length xs + 1 = [ x:tail | tail <- (k-1) `permutations` xs ] -- ensures that every subset is k-element
     | otherwise = [ x:tail | tail <- (k-1) `permutations` xs ] ++ k `permutations` xs
+
+-- lazy/eager evaluation
+
+-- 6. Hamming numbers:
+merge :: Ord a => [a] -> [a] -> [a]
+merge a [] = a
+merge [] b = b
+merge (x:xs) (y:ys) 
+    | x == y = x : merge xs ys -- reccursively calls the merge on the tail of the list
+    | x > y = y : merge (x:xs) ys
+    | otherwise = x:merge xs (y:ys) 
+
+hamming :: [Integer]
+hamming = 1 : merge (merge (map (2*) hamming) (map (3*) hamming)) (map (5*) hamming)
