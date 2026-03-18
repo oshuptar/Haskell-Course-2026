@@ -63,6 +63,8 @@ isPrime' n = any (== n) (primesTo n)
 
 -- 4. Matrix Multiplication
 
+-- TODO: add a matrix-dimension validation function
+
 -- we implicitly assume that the dimensions are correct
 -- no matrix dimension checks are done
 matMul :: [[Int]] -> [[Int]] -> [[Int]]
@@ -77,3 +79,10 @@ matMul a b = [
         p = length (head a)
         n = length (head b)
 
+-- 5. Permutations
+permutations :: Int -> [a] -> [[a]]
+permutations 0 set = [[]];
+permutations _ []  = []
+permutations k (x:xs) 
+    | k == length xs + 1 = [ x:tail | tail <- (k-1) `permutations` xs ] -- ensures that every subset is k-element
+    | otherwise = [ x:tail | tail <- (k-1) `permutations` xs ] ++ k `permutations` xs
