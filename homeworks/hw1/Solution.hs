@@ -20,3 +20,30 @@ goldbachPairs :: Int -> [(Int, Int)]
 goldbachPairs n
     | n < 4 || odd n = [] 
     | otherwise = [(p, q) | q <- [ceiling (fromIntegral n / 2)..n], let p = n - q, isPrime p, isPrime q]
+
+
+-- 2. **Coprime Pairs**
+--  Write a function `coprimePairs :: [Int] -> [(Int, Int)]` that takes a list of positive integers
+--  and returns all unique pairs `(x, y)` (with `x < y`) for which `gcd x y == 1`. You may use Haskell's built-in `gcd`.
+
+removeDuplicates :: Eq a => [a]->[a]
+removeDuplicates xs = reverse (go xs [])
+    where
+        go [] acc = acc
+        go (x:xs) !acc = if 
+            all (\y -> y /= x) xs 
+            then go xs (x : acc)
+            else go xs acc
+-- since appending to the end of the list is O(n) on each step. We reverse it once at the end with complexity O(n)
+
+-- the complexity of generating pairs is O(n^2), hence the function to remove duplicates from the list would not asymptotically affect the algorithm
+-- removeDuplicates is optional, if we allow duplicate values in the list
+coprimePairs :: [Int] -> [(Int, Int)]
+coprimePairs [] = []
+coprimePairs xs
+    | any ( <= 0) xs = []
+    | otherwise = go (removeDuplicates xs) 
+ where
+    go [] = []
+    go (x:xs) = [(min x y, max x y) | y <- xs , x /= y ,x `gcd` y == 1] ++ go xs 
+    -- we handle the case x /= y, because if x = 1 and y = 1 => gcd x y == 1, but x is not < y
