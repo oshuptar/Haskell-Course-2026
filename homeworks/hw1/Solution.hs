@@ -60,3 +60,20 @@ primesTo n
 
 isPrime' :: Int -> Bool
 isPrime' n = any (== n) (primesTo n)
+
+-- 4. Matrix Multiplication
+
+-- we implicitly assume that the dimensions are correct
+-- no matrix dimension checks are done
+matMul :: [[Int]] -> [[Int]] -> [[Int]]
+matMul [] _ = []
+matMul _ [] = []
+matMul a b = [
+    [ sum [ a !! i !! k * b !! k !! j | k <- [0..p-1]]
+    | j <- [0..n-1]]
+    | i <- [0..m-1]]
+    where 
+        m = length a
+        p = length (head a)
+        n = length (head b)
+
