@@ -47,3 +47,16 @@ coprimePairs xs
     go [] = []
     go (x:xs) = [(min x y, max x y) | y <- xs , x /= y ,x `gcd` y == 1] ++ go xs 
     -- we handle the case x /= y, because if x = 1 and y = 1 => gcd x y == 1, but x is not < y
+
+-- 3. Sieve of Eratosthenes
+sieve :: [Int] -> [Int]
+sieve [] = []
+sieve (x:xs) = x : sieve [y | y <- xs, y `mod` x/= 0]
+
+primesTo :: Int -> [Int]
+primesTo n 
+    | n < 2 = []
+    | otherwise = sieve [2..n]
+
+isPrime' :: Int -> Bool
+isPrime' n = any (== n) (primesTo n)
