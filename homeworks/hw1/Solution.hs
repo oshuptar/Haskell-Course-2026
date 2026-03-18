@@ -1,6 +1,6 @@
+{-# LANGUAGE BangPatterns #-}-- enables BangPattern extension
 module Solution where
 import Data.Function
-{-#LANGUAGE BangPatterns-} -- enables BangPattern extension
 
 -- 1. Write a function `goldbachPairs :: Int -> [(Int, Int)]` that, given an even integer `n ≥ 4`, returns all pairs `(p, q)` satisfying:
 --   - `p` and `q` are both prime numbers
@@ -125,3 +125,16 @@ listMax' (x:xs) = go xs x
     where 
         go [] !acc = Just acc
         go (y:ys) !acc = go ys (max y acc)
+
+-- 9. Infinite Prime Stream
+primes :: [Int]
+primes = sieve [2..]   
+
+isPrime'' :: Int -> Bool
+isPrime'' n = go n primes
+    where 
+        go n (x:xs)
+         | x > n = False
+         | x == n = True
+         | otherwise = go n xs
+
