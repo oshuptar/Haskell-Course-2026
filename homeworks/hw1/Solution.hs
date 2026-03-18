@@ -100,3 +100,10 @@ merge (x:xs) (y:ys)
 
 hamming :: [Integer]
 hamming = 1 : merge (merge (map (2*) hamming) (map (3*) hamming)) (map (5*) hamming)
+
+-- 7. Integer Power with Bang Patterns
+power::Int -> Int -> Int
+power b e = go e 1
+    where 
+        go 0 !acc = acc
+        go e !acc = go (e-1) b*acc
