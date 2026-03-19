@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}-- enables BangPattern extension
 module Solution where
 import Data.Function
+import Data.Binary.Get (Decoder(Fail))
 
 -- 1. Write a function `goldbachPairs :: Int -> [(Int, Int)]` that, given an even integer `n ≥ 4`, returns all pairs `(p, q)` satisfying:
 --   - `p` and `q` are both prime numbers
@@ -63,15 +64,28 @@ isPrime' :: Int -> Bool
 isPrime' n = any (== n) (primesTo n)
 
 -- 4. Matrix Multiplication
+checkRowLength :: [[Int]] -> Bool
+checkRowLength [] = True
+checkRowLength matrix = go matrix (length (head matrix))
+    where 
+        go [] prev_len = True
+        go (row:tail) prev_len 
+            | length row == prev_len = go tail prev_len
+            | otherwise = False
 
--- TODO: add a matrix-dimension validation function
 
--- we implicitly assume that the dimensions are correct
--- no matrix dimension checks are done
+checkDimensions :: [[Int]] -> [[Int]] -> Bool
+checkDimensions [] _ = False
+checkDimensions _ [] = False
+checkDimensions a b = checkRowLength a 
+                        && checkRowLength b 
+                        && length (head a) == length b -- if by any case, all rows have zero elements, then if length head a = length b, then b is empty, which is handled by pattern matching
+
+
 matMul :: [[Int]] -> [[Int]] -> [[Int]]
-matMul [] _ = []
-matMul _ [] = []
-matMul a b = [
+matMul a b
+    | not (checkDimensions a b) = []
+    | otherwise = [
     [ sum [ a !! i !! k * b !! k !! j | k <- [0..p-1]]
     | j <- [0..n-1]]
     | i <- [0..m-1]]
@@ -157,8 +171,8 @@ mean (x:xs) = go xs (x, 1)
 meanVariance :: [Double] -> Maybe (Double, Double)
 meanVariance [] = Nothing
 meanVariance (x:xs) = go xs (x, 1, x*x)
-    where 
-        go [] (!sum, !length, !sum_x2) = let 
+    where
+        go [] (!sum, !length, !sum_x2) = let
                                         mean = sum/length
                                         var = sum_x2/length - mean*mean
                                         in Just (mean, var)
