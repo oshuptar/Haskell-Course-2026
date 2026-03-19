@@ -122,19 +122,44 @@ listMax (x:xs) = go xs x
 listMax' :: [Int] -> Maybe Int
 listMax'[] = Nothing
 listMax' (x:xs) = go xs x
-    where 
+    where
         go [] !acc = Just acc
         go (y:ys) !acc = go ys (max y acc)
 
 -- 9. Infinite Prime Stream
 primes :: [Int]
-primes = sieve [2..]   
+primes = sieve [2..]
 
 isPrime'' :: Int -> Bool
 isPrime'' n = go n primes
-    where 
+    where
         go n (x:xs)
          | x > n = False
          | x == n = True
          | otherwise = go n xs
 
+-- 10. Strict Accumulation and Space Leaks
+meanLeaked :: [Double] -> Maybe Double
+meanLeaked [] = Nothing
+meanLeaked (x:xs) = go xs (x, 1)
+    where
+        go [] (sum, length) = Just (sum / length)
+        go (x:xs) (sum, length) = go xs (sum + x, length + 1)
+
+-- the bang pattern on the pair itself is not sufficient - it would call the pair constructor, but deffer the expression evaluation
+mean :: [Double] -> Maybe Double
+mean [] = Nothing
+mean (x:xs) = go xs (x, 1)
+    where
+        go [] (!sum, !length) = Just (sum / length)
+        go (x:xs) (!sum, !length) = go xs (sum + x, length + 1)
+
+meanVariance :: [Double] -> Maybe (Double, Double)
+meanVariance [] = Nothing
+meanVariance (x:xs) = go xs (x, 1, x*x)
+    where 
+        go [] (!sum, !length, !sum_x2) = let 
+                                        mean = sum/length
+                                        var = sum_x2/length - mean*mean
+                                        in Just (mean, var)
+        go (x:xs) (!sum, !length, !sum_x2) = go xs (sum + x, length + 1, sum_x2 + x*x)
