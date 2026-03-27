@@ -1,8 +1,7 @@
 module Solution (main) where
 
 data Sequence a = Empty | Single a | Append (Sequence a) (Sequence a)
-    deriving (Show, Eq, Functor, Foldable, Semigroup
-    )
+    deriving (Show, Eq)
 
 -- 1:
 instance Functor Sequence where
@@ -35,11 +34,29 @@ instance Semigroup (Sequence a) where
     (<>) (Single a) seq2 = Append (Single a) (seq2)
     (<>) (Append subseq1 subseq2) seq2 = subseq1 <> (subseq2 <> seq2)
 
+-- 4:
+
+tailElem :: Eq a => a -> Sequence a -> Bool
+tailElem a (Empty) = False
+tailElem a (Single val) = a == val
+tailElem a (Append seq1 seq2) = go a [seq1, seq2] False
+    where
+        go :: Eq a => a -> [Sequence a] -> Bool -> Bool
+        go _ _ True = True
+        go a [] acc = acc
+        go a ((Append seq1_1 seq1_2):seq2) acc = go a (seq1_1:seq1_2:seq2) acc 
+        go a ((Empty):seq2) acc = go a (seq2) acc
+        go a ((Single val):seq2) _ = go a (seq2) (a == val)
+
 
 main :: IO ()
 main = do
     let sequence = Append (Single 1) (Append (Single 2) (Append (Single 3) Empty))
-    print(fmap (+1) sequence)
+    let sequence_2 = fmap (+1) sequence
+    let sequence_3 = sequence <> sequence_2
+    print(sequence_2)
     print(seqToList sequence)
-    print(seqLength sequence)
-    print(sequence <> sequence)
+    print(seqLength sequence) 
+    print(sequence_3)
+    print(tailElem 5 sequence_3)
+    print(tailElem 4 sequence_3)
