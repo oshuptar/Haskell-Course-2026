@@ -1,14 +1,17 @@
 module Solution (main) where
 
 data Sequence a = Empty | Single a | Append (Sequence a) (Sequence a)
-    deriving (Show, Eq)
+    deriving (Show, Eq, Functor, Foldable, Semigroup
+    )
 
+-- 1:
 instance Functor Sequence where
     --fmap ::  (a->b)->Sequence a-> Sequence b
     fmap f (Empty) = Empty
     fmap f (Single a) = Single(f a)
     fmap f (Append a1 a2) = Append (fmap f a1) (fmap f a2)
 
+-- 2:
 instance Foldable Sequence where
     -- foldmap :: Monoid m => (a -> m) -> Sequence a -> m
     foldMap f (Empty) = mempty
@@ -21,9 +24,22 @@ seqToList a = foldMap (\x -> [x]) a
 seqLength:: Sequence a -> Int
 seqLength a = foldl (\acc _ -> acc + 1) 0 a -- first argument is accumulator second argument is element
 
+-- 3:
+instance Monoid (Sequence a) where
+    mempty = Empty
+
+instance Semigroup (Sequence a) where
+    -- (<>) :: Sequence a -> Sequence a -> Sequence a
+    (<>) (Empty) seq2 = seq2
+    (<>) seq1 (Empty) = seq1
+    (<>) (Single a) seq2 = Append (Single a) (seq2)
+    (<>) (Append subseq1 subseq2) seq2 = subseq1 <> (subseq2 <> seq2)
+
+
 main :: IO ()
 main = do
     let sequence = Append (Single 1) (Append (Single 2) (Append (Single 3) Empty))
     print(fmap (+1) sequence)
     print(seqToList sequence)
     print(seqLength sequence)
+    print(sequence <> sequence)
