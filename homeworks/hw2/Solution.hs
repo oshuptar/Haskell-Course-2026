@@ -15,8 +15,15 @@ instance Foldable Sequence where
     foldMap f (Single a) = f a
     foldMap f (Append a1 a2) = foldMap f a1 <> foldMap f a2
 
+seqToList:: Sequence a -> [a]
+seqToList a = foldMap (\x -> [x]) a
+
+seqLength:: Sequence a -> Int
+seqLength a = foldl (\acc _ -> acc + 1) 0 a -- first argument is accumulator second argument is element
+
 main :: IO ()
 main = do
     let sequence = Append (Single 1) (Append (Single 2) (Append (Single 3) Empty))
     print(fmap (+1) sequence)
-    print(foldMap (\a -> [a]) sequence)
+    print(seqToList sequence)
+    print(seqLength sequence)
