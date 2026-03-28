@@ -7,7 +7,7 @@ data Sequence a = Empty | Single a | Append (Sequence a) (Sequence a)
 instance Functor Sequence where
     --fmap ::  (a->b)->Sequence a-> Sequence b
     fmap f (Empty) = Empty
-    fmap f (Single a) = Single(f a)
+    fmap f (Single a) = Single (f a)
     fmap f (Append a1 a2) = Append (fmap f a1) (fmap f a2)
 
 -- 2:
@@ -44,7 +44,7 @@ tailElem a (Append seq1 seq2) = go a [seq1, seq2] False
         go :: Eq a => a -> [Sequence a] -> Bool -> Bool
         go _ _ True = True
         go a [] acc = acc
-        go a ((Append seq1_1 seq1_2):seq2) acc = go a (seq1_1:seq1_2:seq2) acc 
+        go a ((Append seq1_1 seq1_2):seq2) acc = go a (seq1_1:seq1_2:seq2) acc
         go a ((Empty):seq2) acc = go a (seq2) acc
         go a ((Single val):seq2) _ = go a (seq2) (a == val)
 
@@ -53,13 +53,31 @@ tailElem a (Append seq1 seq2) = go a [seq1, seq2] False
 tailToList::Sequence a -> [a]
 tailToList Empty = []
 tailToList (Single val) = [val]
-tailToList seq = go [] [seq] 
-    where 
+tailToList seq = go [] [seq]
+    where
         go :: [a] -> [Sequence a] -> [a]
         go list [] = list
         go list ((Append seq1_1 seq1_2):seq2) = go list (seq1_1:seq1_2:seq2)
         go list ((Single val):seq2) = go (list ++ [val]) seq2
         go list ((Empty):seq2) = go list seq2
+
+-- 6:
+data Token = TNum Int | TAdd | TSub | TMul | TDiv
+
+tailRPN :: [Token] -> Maybe Int
+tailRPN [] = Nothing
+tailRPN expr = go expr []
+    where
+        go :: [Token] -> [Int] -> Maybe Int
+        go [] [val] = Just val
+        go [] _ = Nothing
+        go ((TNum val):expr) stack = go expr (val:stack)
+        go ((TAdd):expr) (right:left:stack) = go expr ((left + right):stack)
+        go ((TSub):expr) (right:left:stack) = go expr ((left - right):stack)
+        go ((TMul):expr) (right:left:stack) = go expr ((left * right):stack)
+        go ((TDiv):expr) (0:left:stack) = Nothing
+        go ((TDiv):expr) (right:left:stack) = go expr ((left `div` right):stack)
+        go _ _ = Nothing
 
 
 main :: IO ()
@@ -69,13 +87,22 @@ main = do
     let sequence_3 = sequence <> sequence_2
     let sequence_4 = Append (Append (Single 10) Empty) (Append (Single 9) (Append Empty (Single 8)))
     let empty_sequence = Empty :: Sequence Int
-    print(sequence_2)
-    print(seqToList sequence)
-    print(seqLength sequence) 
-    print(sequence_3)
-    print(tailElem 5 sequence_3)
-    print(tailElem 4 sequence_3)
-    print(tailToList sequence_3)
-    print(tailToList empty_sequence)
-    print(tailToList sequence_4)
+    print (sequence_2)
+    print (seqToList sequence)
+    print (seqLength sequence)
+    print (sequence_3)
+    print (tailElem 5 sequence_3)
+    print (tailElem 4 sequence_3)
+    print (tailToList sequence_3)
+    print (tailToList empty_sequence)
+    print (tailToList sequence_4)
+    print $ tailRPN [TNum 2, TNum 3, TAdd]
+    print $ tailRPN [TNum 5, TNum 2, TSub]
+    print $ tailRPN [TNum 4, TNum 3, TMul]
+    print $ tailRPN [TNum 20, TNum 5, TDiv]
+    print $ tailRPN [TNum 2, TNum 3, TNum 4, TAdd, TMul]
+    print $ tailRPN [TNum 10, TNum 2, TNum 3, TMul, TAdd]
+    print $ tailRPN [TNum 8, TNum 0, TDiv]
+    print $ tailRPN [TAdd]
+    print $ tailRPN []
 
