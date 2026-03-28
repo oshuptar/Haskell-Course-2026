@@ -49,14 +49,33 @@ tailElem a (Append seq1 seq2) = go a [seq1, seq2] False
         go a ((Single val):seq2) _ = go a (seq2) (a == val)
 
 
+-- 5:
+tailToList::Sequence a -> [a]
+tailToList Empty = []
+tailToList (Single val) = [val]
+tailToList seq = go [] [seq] 
+    where 
+        go :: [a] -> [Sequence a] -> [a]
+        go list [] = list
+        go list ((Append seq1_1 seq1_2):seq2) = go list (seq1_1:seq1_2:seq2)
+        go list ((Single val):seq2) = go (list ++ [val]) seq2
+        go list ((Empty):seq2) = go list seq2
+
+
 main :: IO ()
 main = do
     let sequence = Append (Single 1) (Append (Single 2) (Append (Single 3) Empty))
     let sequence_2 = fmap (+1) sequence
     let sequence_3 = sequence <> sequence_2
+    let sequence_4 = Append (Append (Single 10) Empty) (Append (Single 9) (Append Empty (Single 8)))
+    let empty_sequence = Empty :: Sequence Int
     print(sequence_2)
     print(seqToList sequence)
     print(seqLength sequence) 
     print(sequence_3)
     print(tailElem 5 sequence_3)
     print(tailElem 4 sequence_3)
+    print(tailToList sequence_3)
+    print(tailToList empty_sequence)
+    print(tailToList sequence_4)
+
