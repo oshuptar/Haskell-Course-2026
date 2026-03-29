@@ -1,4 +1,5 @@
 module Solution (main) where
+import Text.Read (Lexeme(String))
 
 data Sequence a = Empty | Single a | Append (Sequence a) (Sequence a)
     deriving (Show, Eq)
@@ -97,6 +98,19 @@ decimal :: [Int] -> Int
 decimal [] = 0
 decimal list = foldl (\seed elem -> 10*seed + elem) 0 list
 
+-- 8: 
+encode :: Eq a => [a] -> [(a, Int)]
+encode [] = []
+encode list = foldr (\elem ((x, count):xs) ->
+    if elem == x then (x, count + 1):xs
+    else (elem, 1):(x, count):xs
+    ) [(last list, 0)] list
+
+decode :: [(a, Int)] -> [a]
+decode [] = []
+decode list = foldr (\(x, count) seed ->
+    replicate count x ++ seed) [] list
+
 
 main :: IO ()
 main = do
@@ -131,5 +145,15 @@ main = do
     print $ decimal []
     print $ decimal [0,2,0,1,4]
     print $ decimal [1,2,3,4]
+    print $ encode ([]::[Int])
+    print $ encode [1]
+    print $ encode [1,1,1]
+    print $ encode [1,2,3]
+    print $ encode [1,2,2,2,3,3,1]
+    print $ encode "aaaabccaadeeee"
+    let encoding_1 = "aaaabccaadeeee"
+    print(decode $ [(1, 0)])
+    print (decode $ encode $ encoding_1)
+    print $ (decode $ encode encoding_1) == encoding_1
 
 
