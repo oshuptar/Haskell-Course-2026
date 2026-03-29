@@ -79,6 +79,24 @@ tailRPN expr = go expr []
         go ((TDiv):expr) (right:left:stack) = go expr ((left `div` right):stack)
         go _ _ = Nothing
 
+-- 7:
+-- foldl::(b -> a -> b) -> b -> t a -> b
+-- foldr:: (a -> b -> b) -> b -> t a -> b
+myReverse:: [a] -> [a]
+myReverse [] = []
+myReverse list = foldl (\seed elem -> elem:seed) [] list
+
+myTakeWhile :: (a -> Bool) -> [a] -> [a]
+myTakeWhile _ [] = []
+myTakeWhile predicate list = foldr (\elem seed ->
+    if predicate elem
+    then elem:seed
+    else []) [] list
+
+decimal :: [Int] -> Int
+decimal [] = 0
+decimal list = foldl (\seed elem -> 10*seed + elem) 0 list
+
 
 main :: IO ()
 main = do
@@ -105,4 +123,13 @@ main = do
     print $ tailRPN [TNum 8, TNum 0, TDiv]
     print $ tailRPN [TAdd]
     print $ tailRPN []
+    print $ myReverse [1,2,3,4,5]
+    print $ myTakeWhile even [2,4,10,11,17,18]
+    print $ myTakeWhile even [3,4,10,11,17,18]
+    print $ myTakeWhile (<5) [6,7,1,2,3,4]
+    print $ myTakeWhile (<5) [1,2,3,4, 6, 7]
+    print $ decimal []
+    print $ decimal [0,2,0,1,4]
+    print $ decimal [1,2,3,4]
+
 
