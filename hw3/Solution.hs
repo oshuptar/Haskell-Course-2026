@@ -73,6 +73,47 @@ seatings guests conflicts = do
             guard (safePair (firstGuest, lastGuest) conflicts)
             return arrangement
 
+-- 4. Custom Monad
+data Result a = Failure String | Success a [String] deriving (Show, Eq)
+instance Functor Result where
+    -- fmap :: (a->b) -> f a -> f b
+    fmap _ (Failure msg) = Failure msg
+    fmap tranformation (Success val warnings) = Success (tranformation val) warnings
+
+instance Applicative Result where
+    pure val = Success val []
+    -- <*> :: f (a->b) -> f a -> f b
+    -- liftA2 :: (a -> b -> c) -> f a -> f b -> f c
+    liftA2 transformation (Success aVal aWarnings) (Success bVal bWarnings) = Success (transformation aVal bVal) (aWarnings <> bWarnings)
+    liftA2 _ (Failure aFailure) _ = Failure aFailure -- assume failure have left - precedence
+    liftA2 _ _ (Failure bFailure) = Failure bFailure
+
+instance Monad Result where
+    return = pure
+    -- >>=  m a -> (a -> m b) -> m b
+    (Success val warnings) >>= transformation = case transformation val of
+                                                    (Success res resWarnings) ->  Success res (warnings <> resWarnings)
+                                                    failure -> failure
+    (Failure msg) >>= _ = Failure msg
+
+
+warn :: String -> Result ()
+warn warning = Success () [warning]
+
+failure :: String -> Result a
+failure = Failure
+
+validateAge :: Int -> Result Int
+validateAge age
+    | age < 0 = failure ("Age Cannot Be Negative: " <> show age)
+    | age > 150 = do
+        warn ("Age Is Above 150: " <> show age) -- >>= \_ -> return age
+        return age
+    | otherwise = return age
+
+validateAges :: [Int] -> Result [Int]
+validateAges = mapM validateAge
+
 
 main :: IO ()
 main = do
@@ -115,5 +156,17 @@ main = do
     print $ seatings guests conflicts
     print $ seatings guests2 conflicts2
     print $ length (seatings guests2 [])
+
+    putStrLn "\nTask3"
+    let ageList1 :: [Int] = [10,20,30,10,20,0]
+    let ageList2 :: [Int] = [10,20,30,10,160,20]
+    let ageList3 :: [Int] = [10,20,30,10,160,170,20,190, 10]
+    let ageList4 :: [Int] = [10,20,30,169,-10,20]
+    print $ validateAges ageList1
+    print $ validateAges ageList2
+    print $ validateAges ageList3
+    print $ validateAges ageList4
+
+
 
 
