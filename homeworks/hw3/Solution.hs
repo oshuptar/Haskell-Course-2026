@@ -2,6 +2,7 @@ module Solution (main) where
 import qualified Data.Map as Map
 import Data.List (permutations)
 import Control.Monad (guard)
+import qualified Control.Monad.Writer as Writer
 
 type Pos = (Int, Int)
 data Dir = N | S | E | W deriving (Eq, Ord, Show)
@@ -114,6 +115,88 @@ validateAge age
 validateAges :: [Int] -> Result [Int]
 validateAges = mapM validateAge
 
+-- 5.
+data Expr = Lit Int | Add Expr Expr | Mul Expr Expr | Neg Expr
+
+instance Show Expr where
+    show (Lit val) = show val
+    show (Add expr1 expr2) = "(" ++ show expr1 ++ "+" ++ show expr2 ++ ")"
+    show (Mul expr1 expr2) = "(" ++ show expr1 ++ "*" ++ show expr2 ++ ")"
+    show (Neg expr) = "(" ++ "-" ++ show expr ++ ")"
+
+-- two versions for this task were implemented with different goals and different syntax patterns to pratice
+
+-- this version assumes every expression is simplifiable to a literal
+simplify' :: Expr -> Writer.Writer [String] Expr
+simplify' (Lit n) = return (Lit n)
+simplify' (Add (Lit 0) expr) = simplify' expr  >>= (\simplified -> Writer.tell ["Additive identity: 0 + " ++ show simplified ++ " -> " ++ show simplified] >> return simplified)
+simplify' (Add expr (Lit 0)) = simplify' expr >>= (\simplified -> Writer.tell ["Additive identity: " ++ show simplified ++ "+ 0 -> " ++ show simplified] >> return simplified)
+simplify' (Mul (Lit 1) expr) = simplify' expr >>= (\simplified -> Writer.tell ["Multiplicative identity: 1 * " ++ show simplified ++ " -> " ++ show simplified] >> return simplified)
+simplify' (Mul expr (Lit 1)) = simplify' expr >>= (\simplified -> Writer.tell ["Multiplicative identity: " ++ show simplified ++ "* 1 -> " ++ show simplified] >> return simplified)
+simplify' (Mul (Lit 0) expr) = simplify' (Lit 0) >>= (\simplified -> Writer.tell ["Zero absorption: 0 * _ -> 0"] >> return simplified)
+simplify' (Mul expr (Lit 0)) = simplify' (Lit 0) >>= (\simplified -> Writer.tell ["Zero absorption: 0 * _ -> 0"] >> return simplified)
+simplify' (Neg (Neg expr)) = simplify' expr >>= (\simplified -> Writer.tell ["Double negation: -(-" ++ show simplified ++ ") -> " ++ show simplified] >> return simplified)
+simplify' (Add (Lit a) (Lit b)) = simplify' (Lit (a + b)) >>= (\simplified -> Writer.tell ["Constant folding: " ++ show a ++ "+" ++ show b ++ " -> " ++ show simplified] >> return simplified)
+simplify' (Mul (Lit a) (Lit b)) = simplify' (Lit (a * b))  >>= (\simplified -> Writer.tell ["Constant folding: " ++ show a ++ "*" ++ show b ++ " -> " ++ show simplified] >> return simplified)
+simplify' (Neg (Lit a)) = simplify' (Lit (- a))  >>= (\simplified -> Writer.tell ["Negation: -" ++ show a ++ " -> +(" ++ show simplified ++ ")"] >> return simplified)
+simplify' (Add exprLeft exprRight) = do
+    left <- simplify' exprLeft
+    right <- simplify' exprRight
+    simplify' (Add left right)
+simplify' (Mul exprLeft exprRight) = do
+    left <- simplify' exprLeft
+    right <- simplify' exprRight
+    simplify' (Mul left right)
+simplify' (Neg expr) = do
+    simplified <- simplify' expr
+    simplify' (Neg simplified)
+
+-- this version assumes that some expressions are not simplifiable and uses a do-notation to practice
+-- in this case Neg (Lit a) was omitted on purpose to show that some expression might be not simplifiable and how the algorithm would handle it
+-- notice that when deleting Neg (Lit a) in the above algorithm - it would enter an infinite loop
+simplifyRoot :: Expr -> Writer.Writer [String] Expr
+simplifyRoot (Add (Lit 0) expr) = do
+    Writer.tell ["Additive identity: 0 + " ++ show expr ++ " -> " ++ show expr]
+    return expr
+simplifyRoot (Add expr (Lit 0)) = do
+    Writer.tell ["Additive identity: " ++ show expr ++ " + 0 -> " ++ show expr]
+    return expr
+simplifyRoot (Mul (Lit 1) expr) = do
+    Writer.tell ["Multiplicative identity: 1 * " ++ show expr ++ " -> " ++ show expr]
+    return expr
+simplifyRoot (Mul expr (Lit 1)) = do
+    Writer.tell ["Multiplicative identity: " ++ show expr ++ " * 1 -> " ++ show expr]
+    return expr
+simplifyRoot (Mul (Lit 0) expr) = do
+    Writer.tell ["Zero absorption: 0 * " ++ show expr ++ " -> 0"]
+    return (Lit 0)
+simplifyRoot (Mul expr (Lit 0)) = do
+    Writer.tell ["Zero absorption: " ++ show expr ++ " * 0 -> 0"]
+    return (Lit 0)
+simplifyRoot (Neg (Neg expr)) = do
+    Writer.tell ["Double negation: -(-" ++ show expr ++ ") -> " ++ show expr]
+    return expr
+simplifyRoot (Add (Lit a) (Lit b)) = do
+    Writer.tell ["Constant folding: " ++ show a ++ " + " ++ show b ++ " -> " ++ show (a + b)]
+    return (Lit (a + b))
+simplifyRoot (Mul (Lit a) (Lit b)) = do
+    Writer.tell ["Constant folding: " ++ show a ++ " * " ++ show b ++ " -> " ++ show (a * b)]
+    return (Lit (a * b))
+simplifyRoot expr = return expr
+
+simplify :: Expr -> Writer.Writer [String] Expr
+simplify (Lit n) = return (Lit n)
+simplify (Add l r) = do
+    l' <- simplify l
+    r' <- simplify r
+    simplifyRoot (Add l' r')
+simplify (Mul l r) = do
+    l' <- simplify l
+    r' <- simplify r
+    simplifyRoot (Mul l' r')
+simplify (Neg e) = do
+    e' <- simplify e
+    simplifyRoot (Neg e')
 
 main :: IO ()
 main = do
@@ -157,7 +240,7 @@ main = do
     print $ seatings guests2 conflicts2
     print $ length (seatings guests2 [])
 
-    putStrLn "\nTask3"
+    putStrLn "\nTask4"
     let ageList1 :: [Int] = [10,20,30,10,20,0]
     let ageList2 :: [Int] = [10,20,30,10,160,20]
     let ageList3 :: [Int] = [10,20,30,10,160,170,20,190, 10]
@@ -167,6 +250,16 @@ main = do
     print $ validateAges ageList3
     print $ validateAges ageList4
 
-
-
+    putStrLn "\nTask5"
+    let expr = Add (Neg (Lit 1)) (Mul (Lit 20) (Add (Lit 0) (Mul (Lit 1) (Neg (Neg (Add (Lit 2) (Lit 3)))))))
+    putStrLn "Original expression:"
+    print expr
+    putStrLn "\nSimplified expression (assumes simplifiable):"
+    let (simplification, log) = Writer.runWriter (simplify' expr)
+    print simplification
+    print log
+    putStrLn "\nSimplified expression (assumes that expression might be not simplifiable):"
+    let (simplification, log) = Writer.runWriter (simplify expr)
+    print simplification
+    print log
 
