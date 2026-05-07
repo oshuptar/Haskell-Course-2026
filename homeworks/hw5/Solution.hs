@@ -76,10 +76,45 @@ eval (Seq exprL exprR) = do
 runEval :: Expr -> Int
 runEval expression = let (res,state) = runState (eval expression) Data.Map.empty in res
 
+--3:
+editDistM :: String -> String -> Int -> Int -> State (Map (Int, Int) Int) Int
+editDistM left right i 0 = do
+    cache <- get
+    modify (Data.Map.insert (i, 0) i)
+    return i
+editDistM left right 0 j = do
+    cache <- get
+    modify (Data.Map.insert (0, j) j)
+    return j
+editDistM xs ys i j = do
+    cache <- get
+    case Data.Map.lookup (i, j) cache of
+        Just dist -> return dist
+        Nothing ->
+            if xs !! (i-1) == ys !! (j-1)
+                then do
+                    result <- editDistM xs ys (i-1) (j-1)
+                    modify (Data.Map.insert (i, j) result)
+                    return result
+                else do
+                    del <- editDistM xs ys (i-1) j
+                    ins <- editDistM xs ys i (j-1)
+                    sub <- editDistM xs ys (i-1) (j-1)
+                    let result = 1 + minimum [del, ins, sub]
+                    modify (Data.Map.insert (i, j) result)
+                    return result
+
+editDistance :: String -> String -> Int
+editDistance left right = let (res, state) =
+                                runState (editDistM left right (length left) (length right)) Data.Map.empty
+                            in res
+
+testEditDistance :: String -> String -> Int -> (Bool, Int)
+testEditDistance left right expected = let result = editDistance left right in (result == expected, result)
 
 main :: IO ()
 main = do
-    putStrLn "Part1"
+    putStrLn "Task1"
     let testProgram = [PUSH 3, PUSH 4, ADD, DUP, PUSH 2, MUL, SWAP, NEG, POP]
     let expected = [14]
     print $ runProg testProgram
@@ -90,7 +125,7 @@ main = do
     print $ runProg skipProgram
     print $ runProg skipProgram == expected
 
-    putStrLn "\nPart2"
+    putStrLn "\nTask2"
     let testEval = Seq (Assign "x" (Num 10)) (Seq (Assign "y" (Add (Var "x") (Num 5))) (Seq (Assign "z" (Mul (Var "y") (Neg (Num 2)))) (Add (Var "z") (Var "x"))))
     let expected = -20
     print $ runEval testEval
@@ -101,3 +136,12 @@ main = do
     print $ runEval testEval
     print $ runEval testEval == expected
 
+    putStrLn "\nTask3"
+    print $ testEditDistance "" "" 0
+    print $ testEditDistance "" "abc" 3
+    print $ testEditDistance "cat" "cut" 1
+    print $ testEditDistance "cat" "cart" 1
+    print $ testEditDistance "haskell" "haskell" 0
+    print $ testEditDistance "kitten" "sitting" 3
+    print $ testEditDistance "flaw" "lawn" 2
+    print $ testEditDistance "intention" "execution" 5
