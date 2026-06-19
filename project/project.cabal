@@ -25,6 +25,8 @@ source-repository head
 
 library
   exposed-modules:
+      BuildSysLang.AST
+      BuildSysLang.Parser
       Lib
   other-modules:
       Paths_project
