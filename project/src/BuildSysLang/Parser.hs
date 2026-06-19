@@ -1,7 +1,7 @@
 module BuildSysLang.Parser where
 import Control.Applicative
-import BuildSysLang.AST (BuildFile, Rule, Target, Command)
-import Data.Char (isDigit, isLetter)
+import BuildSysLang.AST (BuildFile (..), Rule(..), Target, Command(..))
+import Data.Char (isDigit, isLetter, isSpace)
 
 data PState = PState { psInput :: String, psLine :: Int, psCol :: Int } deriving (Show , Eq)
 newtype Parser a = Parser { runParser :: PState -> [(a, PState)] }
@@ -44,15 +44,30 @@ parse p input = runParser p (PState input 1 1)
 
 -- Parses many rules
 parseBuildFile :: Parser BuildFile
-parseBuildFile = undefined
+parseBuildFile = do
+    parseSpaces
+    rules <- parseMany parseRule
+    return (BuildFile rules)
 
 -- Parses a generic rule
 parseRule :: Parser Rule
-parseRule = undefined
+parseRule = do
+    _ <- parseSymbol "target"
+    target <- parseTarget
+    _ <- parseSymbol ":"
+    deps <- parseDependencies
+    _ <- parseSymbol "{"
+    recipe <- parseRecipe
+    _ <- parseSymbol "}"
+    return (Rule target deps recipe)
 
 -- Parser a generic target
 parseTarget :: Parser Target
-parseTarget = undefined
+parseTarget = do
+  c  <- parseLetter
+  cs <- parseMany (parseLetter <|> parseDigit <|> parseChar '.' <|> parseChar '_')
+  _ <- parseSpaces
+  return (c : cs)
 
 -- Parses dependency section
 parseDependencies :: Parser [Target]
@@ -65,6 +80,15 @@ parseRecipe = undefined
 -- Parses a single command
 parseCommand :: Parser Command
 parseCommand = undefined
+
+parseShell :: Parser Command
+parseShell = undefined
+
+parseEcho :: Parser Command
+parseEcho = undefined
+
+parseTouch :: Parser Command
+parseTouch = undefined
 
 -- Consumes one character
 parseItem :: Parser Char
@@ -93,12 +117,29 @@ parseMany parser = parseSome parser <|> return []
 parseSome :: Parser a -> Parser [a]
 parseSome parser = do
     item <- parser
-    tail <- parseMany parser
-    return (item:tail)
+    rest <- parseMany parser
+    return (item:rest)
 
 -- Parses a space character
 parseSpace :: Parser Char
-parseSpace = parseChar ' '
+parseSpace = parseMatching isSpace
+
+parseSpaces :: Parser ()
+parseSpaces = do { _ <- parseMany parseSpace; return () }
+
+parseToken :: Parser a -> Parser a
+parseToken parser = do { value <- parser; parseSpaces; return value }
+
+parseSymbol :: String -> Parser String
+parseSymbol cs = parseToken (parseString cs)
+
+-- Parses a string given as an input
+parseString :: String -> Parser String
+parseString "" = return []
+parseString (c:cs) = do
+    _ <- parseMatching (==c)
+    _ <- parseString cs
+    return (c:cs)
 
 -- Parses a digit
 parseDigit :: Parser Char
