@@ -1,9 +1,8 @@
-module BuildSysLang.Parser () where 
+module BuildSysLang.Parser where 
 import Control.Applicative
 import BuildSysLang.AST (BuildFile, Rule, Target, Command)
-import Control.Concurrent (Chan)
 
-data PState = PState { psInput :: String, psLine :: Int, psCol :: Int }
+data PState = PState { psInput :: String, psLine :: Int, psCol :: Int } deriving (Show , Eq)
 newtype Parser a = Parser { runParser :: PState -> [(a, PState)] }
 
 -- newtype StateT s m a = StateT { runStateT :: s -> m (a, s) }
@@ -18,20 +17,15 @@ instance Monad Parser where
         [(parsed', leftover') | (parsed, leftover) <- parser parserState,
                                 (parsed', leftover') <- runParser (g parsed) leftover  ]
         
-
-
 instance Applicative Parser where
     -- liftA2 :: (a -> b -> c) -> f a -> f b -> f c
     -- (<*>) :: Parser (a -> b) -> Parser a -> Parser b
     pure parsed = Parser $ \parserState -> [(parsed, parserState)]
     pf <*> px = pf >>= \f -> px >>= \x -> return (f x)
 
-
-
 instance Functor Parser where
     -- fmap :: (a -> b) -> f a -> f b
     fmap f p = p >>= return . f
-
 
 -- Sequencing fundamentally cannot say "or." You need a separate operation: "try the left parser; if it fails, try the right." That operation is <|>, and the typeclass that provides it is Alternative.
 instance Alternative Parser where
@@ -43,45 +37,39 @@ instance Alternative Parser where
             [] -> fallback parserState
             results -> results
 
+-- Runs a parser
+parse :: Parser a -> String -> [(a, PState)]
+parse p input = runParser p (PState input 1 1)
+
 -- Parses many rules
-parseBuildFile :: String -> Parser BuildFile
+parseBuildFile :: Parser BuildFile
 parseBuildFile = undefined
 
--- IO operation that reads a file and transforms into a string. A function that receives a file name and returns an IO computation that produces a String
-readFile :: FilePath -> IO String
-readFile = undefined
-
 -- Parses a generic rule
-parseRule :: String -> Parser Rule
+parseRule :: Parser Rule
 parseRule = undefined
 
 -- Parser a generic target
-parseTarget :: String -> Parser Target
+parseTarget :: Parser Target
 parseTarget = undefined
 
 -- Parses dependency section
-parseDependencies :: String -> Parser [Target]
+parseDependencies :: Parser [Target]
 parseDependencies = undefined
-114 x 16
-1 Hidden Terminal
-use stack to build
-
-stack build
-
 
 -- Parses recipe section
-parseRecipe :: String -> [Command]
+parseRecipe :: Parser [Command]
 parseRecipe = undefined
 
 -- Parses a single command
-parseCommand :: String -> Command
+parseCommand :: Parser Command
 parseCommand = undefined
 
 -- Consumes one character
 parseItem :: Parser Char
 parseItem = Parser $ \parserState -> case psInput parserState of
     [] -> [] -- nothing to read
-    (char:chars) -> [(char, parserState {psInput = chars})]
+    (char:chars) -> [(char, advance char (parserState {psInput = chars}))]
 
 -- Updates line/col based on what character was consumed
 advance :: Char -> PState -> PState
