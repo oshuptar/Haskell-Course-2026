@@ -1,6 +1,7 @@
-module BuildSysLang.Parser where 
+module BuildSysLang.Parser where
 import Control.Applicative
 import BuildSysLang.AST (BuildFile, Rule, Target, Command)
+import Data.Char (isDigit, isLetter)
 
 data PState = PState { psInput :: String, psLine :: Int, psCol :: Int } deriving (Show , Eq)
 newtype Parser a = Parser { runParser :: PState -> [(a, PState)] }
@@ -13,10 +14,10 @@ instance Monad Parser where
     -- (>>=)  :: m a -> (a -> m b) -> m b 
     -- return ::   a -> m a 
     return = pure
-    (Parser parser) >>= g = Parser $ \parserState -> 
+    (Parser parser) >>= g = Parser $ \parserState ->
         [(parsed', leftover') | (parsed, leftover) <- parser parserState,
                                 (parsed', leftover') <- runParser (g parsed) leftover  ]
-        
+
 instance Applicative Parser where
     -- liftA2 :: (a -> b -> c) -> f a -> f b -> f c
     -- (<*>) :: Parser (a -> b) -> Parser a -> Parser b
@@ -32,7 +33,7 @@ instance Alternative Parser where
     -- empty :: f a
     empty = Parser $ \_ -> []
     -- <|> :: f a -> f a -> f a
-    (Parser parser) <|> (Parser fallback) = Parser $ \parserState -> 
+    (Parser parser) <|> (Parser fallback) = Parser $ \parserState ->
         case parser parserState of
             [] -> fallback parserState
             results -> results
@@ -69,37 +70,45 @@ parseCommand = undefined
 parseItem :: Parser Char
 parseItem = Parser $ \parserState -> case psInput parserState of
     [] -> [] -- nothing to read
-    (char:chars) -> [(char, advance char (parserState {psInput = chars}))]
+    (char:chars) -> [(char, advance char parserState {psInput = chars})]
 
 -- Updates line/col based on what character was consumed
 advance :: Char -> PState -> PState
-advance = undefined
+advance '\n' state = state { psLine = psLine state + 1 , psCol = 1}
+advance _ state = state { psCol = psCol state + 1 }
 
 -- Parses a character matching the predicate
 parseMatching :: (Char -> Bool) -> Parser Char
-parseMatching = undefined
+parseMatching predicate = do
+    char <- parseItem
+    if predicate char
+        then return char
+        else empty
 
 -- Reading zero or more occurences of an element:
 parseMany :: Parser a -> Parser [a]
-parseMany = undefined
+parseMany parser = parseSome parser <|> return []
 
 -- Reading one or more occurences of an element:
 parseSome :: Parser a -> Parser [a]
-parseSome = undefined
+parseSome parser = do
+    item <- parser
+    tail <- parseMany parser
+    return (item:tail)
 
 -- Parses a space character
 parseSpace :: Parser Char
-parseSpace = undefined
+parseSpace = parseChar ' '
 
 -- Parses a digit
 parseDigit :: Parser Char
-parseDigit = undefined
+parseDigit = parseMatching isDigit
 
 -- Parses a letter
 parseLetter :: Parser Char
-parseLetter = undefined
+parseLetter = parseMatching isLetter
 
 -- Parses a specific character
 parseChar :: Char -> Parser Char
-parseChar = undefined
+parseChar char = parseMatching (== char)
 
