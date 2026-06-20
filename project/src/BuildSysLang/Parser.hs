@@ -38,6 +38,18 @@ instance Alternative Parser where
             [] -> fallback parserState
             results -> results
 
+
+parseProgram :: String -> Either String BuildFile
+parseProgram input =
+  case parse parseBuildFile input of
+    [(buffer, state)] | null (psInput state) -> Right buffer
+               | otherwise -> Left $ "Parse stopped at line "
+                                          ++ show (psLine state) ++ ", column "
+                                          ++ show (psCol state)
+                                          ++ " (remaining: " ++ take 20 (psInput state) ++ "...)"
+    _ -> Left "Parse failed: no valid parse"
+
+
 -- Runs a parser
 parse :: Parser a -> String -> [(a, PState)]
 parse p input = runParser p (PState input 1 1)
@@ -71,24 +83,39 @@ parseTarget = do
 
 -- Parses dependency section
 parseDependencies :: Parser [Target]
-parseDependencies = undefined
+parseDependencies = parseMany parseTarget
 
 -- Parses recipe section
 parseRecipe :: Parser [Command]
-parseRecipe = undefined
+parseRecipe = parseMany parseCommand
 
 -- Parses a single command
 parseCommand :: Parser Command
-parseCommand = undefined
+parseCommand = parseShell <|> parseEcho <|> parseTouch
+
+parseQuotes :: Parser String
+parseQuotes = do
+    _ <- parseChar '"'
+    quote <- parseMany (parseMatching (/= '"'))
+    _ <- parseChar '"'
+    _ <- parseSpaces
+    return quote
+
 
 parseShell :: Parser Command
-parseShell = undefined
+parseShell = do
+    _ <- parseSymbol "shell"
+    Shell <$> parseQuotes
 
 parseEcho :: Parser Command
-parseEcho = undefined
+parseEcho = do
+    _ <- parseSymbol "echo"
+    Echo <$> parseQuotes
 
 parseTouch :: Parser Command
-parseTouch = undefined
+parseTouch = do
+    _ <- parseSymbol "touch"
+    Touch <$> parseQuotes
 
 -- Consumes one character
 parseItem :: Parser Char
