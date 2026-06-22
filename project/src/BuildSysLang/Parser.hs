@@ -38,7 +38,6 @@ instance Alternative Parser where
             [] -> fallback parserState
             results -> results
 
-
 parseProgram :: String -> Either String BuildFile
 parseProgram input =
   case parse parseBuildFile input of
@@ -48,7 +47,6 @@ parseProgram input =
                                           ++ show (psCol state)
                                           ++ " (remaining: " ++ take 20 (psInput state) ++ "...)"
     _ -> Left "Parse failed: no valid parse"
-
 
 -- Runs a parser
 parse :: Parser a -> String -> [(a, PState)]
