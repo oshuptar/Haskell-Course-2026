@@ -24,6 +24,9 @@ dependencies:
   - containers
   - mtl
   - transformers
+  - process
+  - directory
+  - time
 
 ghc-options:
   - -Wall

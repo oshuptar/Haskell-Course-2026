@@ -38,7 +38,10 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , directory
     , mtl
+    , process
+    , time
     , transformers
   default-language: Haskell2010
 
@@ -54,8 +57,11 @@ executable project-exe
   build-depends:
       base >=4.7 && <5
     , containers
+    , directory
     , mtl
+    , process
     , project
+    , time
     , transformers
   default-language: Haskell2010
 
@@ -72,7 +78,10 @@ test-suite project-test
   build-depends:
       base >=4.7 && <5
     , containers
+    , directory
     , mtl
+    , process
     , project
+    , time
     , transformers
   default-language: Haskell2010

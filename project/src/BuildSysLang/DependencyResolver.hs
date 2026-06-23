@@ -6,6 +6,10 @@ import Control.Monad.State (StateT, get, modify, runStateT)
 import Control.Monad.Trans.Class (lift)
 import qualified Data.Set as Set
 import qualified Control.Monad
+import qualified System.Process
+import System.Directory ( doesFileExist, setModificationTime )
+import Data.Time.Clock (getCurrentTime)
+import System.Exit (ExitCode(..))
 import Data.Set (Set)
 
 data DependencyGraph = DependencyGraph {
@@ -82,14 +86,27 @@ buildCyclePath target path = reverse (takeWhile (/= target) path) ++ [target]
 
 type FreshnessCheck = Target -> IO Bool -- a function which would determine whether a Target needs rebuilding
 
+data BuildError = BuildError {
+    failedTarget  :: Target,
+    failedCommand :: Maybe Command,
+    exitInfo      :: String
+} deriving (Show)
+
+type BuildResult = Either BuildError ()
+
 build :: DependencyGraph -> FreshnessCheck -> IO ()
 build graph freshnessCheck =
   case topologicalSort graph of
-    Left cycle  -> putStrLn $ "Build failed: Circular dependency " ++ show cycle -- report the cycle, abort
+    Left cycle  -> putStrLn ("Build failed: Circular dependency " ++ show cycle)
     Right topoOrder -> do
       (_, rebuildSet) <- runStateT (refreshGraph graph topoOrder freshnessCheck) Set.empty
-      success <- rebuildGraph graph rebuildSet topoOrder
-      unless success $ putStrLn "Build failed: a recipe errored"
+      result <- rebuildGraph graph rebuildSet topoOrder
+      case result of
+        Right () -> putStrLn "Build succeeded"
+        Left err -> putStrLn $
+            "Build failed: target " ++ failedTarget err
+            ++ maybe "" (\command -> ", command " ++ show command) (failedCommand err)
+            ++ ": " ++ exitInfo err
 
 -- a computation which tracks the set of targets that needs rebuilding
 refreshGraph :: DependencyGraph -> [Target] -> FreshnessCheck -> StateT (Set Target) IO ()
@@ -102,24 +119,47 @@ refreshGraph graph (dependency:targets) freshnessCheck = do
         Nothing -> return ()
     refreshGraph graph targets freshnessCheck
 
-rebuildGraph :: DependencyGraph -> Set Target -> [Target] -> IO Bool
-rebuildGraph graph rebuildSet [] = return True
+rebuildGraph :: DependencyGraph -> Set Target -> [Target] -> IO BuildResult
+rebuildGraph graph rebuildSet [] = return (Right ())
 rebuildGraph graph rebuildSet (target:rest) = do
     result <- if Set.member target rebuildSet
               then case Map.lookup target (dependencyRule graph) of
                        Just rule -> executeRecipe (recipe rule)
-                       Nothing -> return True
-              else return True
-    if result then rebuildGraph graph rebuildSet rest else return False
+                       Nothing -> return (Right ())
+              else return (Right ())
+    case result of
+        Right () -> rebuildGraph graph rebuildSet rest
+        Left err -> return (Left (err { failedTarget = target }))
 
-executeCommand :: Command -> IO Bool
-executeCommand command = do
-    undefined
-    -- parse and execute the command here
+executeCommand :: Command -> IO BuildResult
+executeCommand (Shell command) = do
+    code <- System.Process.system command
+    case code of
+        ExitSuccess   -> return (Right ())
+        ExitFailure n -> return (Left (BuildError {
+            failedTarget  = "",
+            failedCommand = Just (Shell command),
+            exitInfo      = "exited with code " ++ show n
+        }))
+executeCommand (Touch path) = do
+    exists <- doesFileExist path
+    if exists
+        then do 
+            time <- getCurrentTime
+            setModificationTime path time
+            return (Right ())
+        else do
+            writeFile path ""
+            return (Right ())
+executeCommand (Echo command) = do
+    putStrLn command
+    return (Right ())
 
 -- Executes a recipe in the terminal
-executeRecipe :: [Command] -> IO Bool
-executeRecipe [] = return True
+executeRecipe :: [Command] -> IO BuildResult
+executeRecipe [] = return (Right ())
 executeRecipe (command:rest) = do
     result <- executeCommand command
-    if result then executeRecipe rest else return False
+    case result of
+        Right () -> executeRecipe rest
+        Left err -> return (Left err)
