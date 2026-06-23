@@ -27,6 +27,7 @@ library
   exposed-modules:
       BuildSysLang.AST
       BuildSysLang.DependencyResolver
+      BuildSysLang.FreshnessRule
       BuildSysLang.Parser
   other-modules:
       Paths_project

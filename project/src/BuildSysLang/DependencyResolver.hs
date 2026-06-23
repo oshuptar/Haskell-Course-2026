@@ -1,4 +1,4 @@
-module BuildSysLang.DependencyResolver (build, buildDependencyGraph, topologicalSort) where
+module BuildSysLang.DependencyResolver (build, buildDependencyGraph, topologicalSort, DependencyGraph(..), FreshnessCheck, BuildResult(..)) where
 import qualified Data.Map as Map
 import Data.Map (Map)
 import BuildSysLang.AST (Target, Rule (..), BuildFile (..), Command (..))
@@ -163,3 +163,4 @@ executeRecipe (command:rest) = do
     case result of
         Right () -> executeRecipe rest
         Left err -> return (Left err)
+
