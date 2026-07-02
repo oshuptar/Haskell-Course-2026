@@ -1,4 +1,4 @@
-module BuildSysLang.Parser where
+module BuildSysLang.Parser (parseProgram) where
 import Control.Applicative
 import BuildSysLang.AST (BuildFile (..), Rule(..), Target, Command(..))
 import Data.Char (isDigit, isLetter, isSpace)
@@ -16,7 +16,7 @@ instance Monad Parser where
     return = pure
     (Parser parser) >>= g = Parser $ \parserState ->
         [(parsed', leftover') | (parsed, leftover) <- parser parserState,
-                                (parsed', leftover') <- runParser (g parsed) leftover  ]
+                                (parsed', leftover') <- runParser (g parsed) leftover]
 
 instance Applicative Parser where
     -- liftA2 :: (a -> b -> c) -> f a -> f b -> f c

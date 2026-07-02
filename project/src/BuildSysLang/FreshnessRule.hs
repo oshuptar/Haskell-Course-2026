@@ -7,21 +7,21 @@ import Data.Aeson (encodeFile, decodeFileStrict)
 import qualified Data.Map as Map
 import qualified Data.ByteString as BS
 import System.Directory (doesFileExist)
-import Control.Monad.State (StateT, modify, lift, execStateT)
+import Control.Monad.State (StateT, modify, lift)
 import Data.Map (Map)
 
 type Hash = Int
 type HashStore = Map Target Hash
 
 mkFreshnessCheck :: DependencyGraph -> HashStore -> FreshnessCheck
-mkFreshnessCheck graph oldHashes = \target -> do
-    newHash <- hashTarget graph target
-    return (Map.lookup target oldHashes /= Just newHash)
+mkFreshnessCheck graph oldHashes = \trgt -> do
+    newHash <- hashTarget graph trgt
+    return (Map.lookup trgt oldHashes /= Just newHash)
 
 hashTarget :: DependencyGraph -> Target -> IO Hash
-hashTarget graph target = case Map.lookup target (dependencyRule graph) of
+hashTarget graph trgt = case Map.lookup trgt (dependencyRule graph) of
     Just rule -> hashRule rule
-    Nothing -> hashFileContent target -- pure content
+    Nothing -> hashFileContent trgt -- pure content
 
 hashRule :: Rule -> IO Hash
 hashRule rule = do
@@ -47,9 +47,9 @@ loadHashStore path = do
 persistHashStore :: String -> HashStore -> IO ()
 persistHashStore = encodeFile
  
-constructHashStore :: [Target] -> DependencyGraph -> StateT HashStore IO ()
-constructHashStore [] graph = return ()
-constructHashStore (target:rest) graph = do
-    newHash <- lift (hashTarget graph target)
-    modify (Map.insert target newHash)
-    constructHashStore rest graph
+constructHashStore :: DependencyGraph -> [Target] -> StateT HashStore IO ()
+constructHashStore _ [] = return ()
+constructHashStore graph (trgt:rest) = do
+    newHash <- lift (hashTarget graph trgt)
+    modify (Map.insert trgt newHash)
+    constructHashStore graph rest

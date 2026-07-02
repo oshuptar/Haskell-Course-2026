@@ -25,7 +25,15 @@ data VisitState = VisitState {
     path :: [Target] -- current Gray Stack
 }
 
-newtype Cycle = Cycle [Target] deriving (Show, Eq)
+newtype Cycle = Cycle [Target] deriving Eq
+
+instance Show Cycle where
+    show (Cycle targets) = printCycle targets
+
+printCycle :: [Target] -> String
+printCycle [] = ""
+printCycle [trgt] = show trgt
+printCycle (trgt:rest) = show trgt ++ " -> " ++ printCycle rest
 
 buildDependencyGraph :: BuildFile -> DependencyGraph
 buildDependencyGraph (BuildFile rules) = DependencyGraph {
@@ -39,7 +47,7 @@ topologicalSort graph = let initialState = VisitState {
     ordering = [],
     path     = []
   } in case runStateT (mapM_ (visitNode graph) (Map.keys (adjacencyGraph graph))) initialState of
-        Left cycle -> Left cycle
+        Left cyc -> Left cyc
         Right (_, finalState) -> Right (reverse (ordering finalState))
 -- runStateT action s0 :: Either Cycle ((), VisitState)
 
@@ -53,36 +61,36 @@ buildDependencyRule :: [Rule] -> [(Target, Rule)]
 buildDependencyRule = fmap (\ rule -> (target rule, rule))
 
 markVisited :: Target -> StateT VisitState (Either Cycle) ()
-markVisited target = do
+markVisited trgt = do
     modify (\visitState -> visitState {
-        colors = Map.insert target Gray (colors visitState),
-        path = target: path visitState
+        colors = Map.insert trgt Gray (colors visitState),
+        path = trgt: path visitState
     })
 
 markFinished :: Target -> StateT VisitState (Either Cycle) ()
-markFinished target = do
+markFinished trgt = do
     modify (\visitState -> visitState {
-        colors = Map.insert target Black (colors visitState),
-        ordering = target : ordering visitState,
+        colors = Map.insert trgt Black (colors visitState),
+        ordering = trgt : ordering visitState,
         path = tail (path visitState)
     })
 
 visitNode :: DependencyGraph -> Target -> StateT VisitState (Either Cycle) ()
-visitNode graph target = do
+visitNode graph trgt = do
     visitState <- get
-    case Map.lookup target (colors visitState) of
+    case Map.lookup trgt (colors visitState) of
         (Just White) -> do
-            markVisited target
-            case Map.lookup target (adjacencyGraph graph) of
+            markVisited trgt
+            case Map.lookup trgt (adjacencyGraph graph) of
                 Nothing -> error "All targets must have dependencies declared"
-                (Just dependencies) -> mapM_ (visitNode graph) dependencies --mapM_ sequences a list of monadic actions left-to-right, threading the state (and short-circuiting on the first Left) automatically 
-            markFinished target
-        (Just Gray) -> lift (Left (Cycle (buildCyclePath target (path visitState))))
+                (Just deps) -> mapM_ (visitNode graph) deps --mapM_ sequences a list of monadic actions left-to-right, threading the state (and short-circuiting on the first Left) automatically 
+            markFinished trgt
+        (Just Gray) -> lift (Left (Cycle (buildCyclePath trgt (path visitState))))
         (Just Black) -> return ()
         _ -> error "All targets must be present"
 
 buildCyclePath :: Target -> [Target] -> [Target]
-buildCyclePath target path = reverse (takeWhile (/= target) path) ++ [target]
+buildCyclePath trgt path = trgt : reverse (takeWhile (/= trgt) path) ++ [trgt]
 
 type FreshnessCheck = Target -> IO Bool -- a function which would determine whether a Target needs rebuilding
 
@@ -94,42 +102,42 @@ data BuildError = BuildError {
 
 type BuildResult = Either BuildError ()
 
-build :: DependencyGraph -> FreshnessCheck -> IO ()
+build :: DependencyGraph -> FreshnessCheck -> IO Bool
 build graph freshnessCheck =
   case topologicalSort graph of
-    Left cycle  -> putStrLn ("Build failed: Circular dependency " ++ show cycle)
+    Left cyc  -> putStrLn ("Build failed: Circular dependency " ++ show cyc) >> return False
     Right topoOrder -> do
       (_, rebuildSet) <- runStateT (refreshGraph graph topoOrder freshnessCheck) Set.empty
       result <- rebuildGraph graph rebuildSet topoOrder
       case result of
-        Right () -> putStrLn "Build succeeded"
-        Left err -> putStrLn $
+        Right () -> putStrLn "Build succeeded" >> return True
+        Left err -> (putStrLn $
             "Build failed: target " ++ failedTarget err
             ++ maybe "" (\command -> ", command " ++ show command) (failedCommand err)
-            ++ ": " ++ exitInfo err
+            ++ ": " ++ exitInfo err) >> return False
 
 -- a computation which tracks the set of targets that needs rebuilding
 refreshGraph :: DependencyGraph -> [Target] -> FreshnessCheck -> StateT (Set Target) IO ()
-refreshGraph graph [] freshnessCheck = return ()
+refreshGraph _ [] _ = return ()
 refreshGraph graph (dependency:targets) freshnessCheck = do
     rebuildState <- get
     needsRebuilding <- lift (freshnessCheck dependency)
     case Map.lookup dependency (adjacencyGraph graph) of
-        Just dependencies -> Control.Monad.when (any (`Set.member` rebuildState) dependencies || needsRebuilding) $ modify (Set.insert dependency)
+        Just deps -> Control.Monad.when (any (`Set.member` rebuildState) deps || needsRebuilding) $ modify (Set.insert dependency)
         Nothing -> return ()
     refreshGraph graph targets freshnessCheck
 
 rebuildGraph :: DependencyGraph -> Set Target -> [Target] -> IO BuildResult
-rebuildGraph graph rebuildSet [] = return (Right ())
-rebuildGraph graph rebuildSet (target:rest) = do
-    result <- if Set.member target rebuildSet
-              then case Map.lookup target (dependencyRule graph) of
+rebuildGraph _ _ [] = return (Right ())
+rebuildGraph graph rebuildSet (trgt:rest) = do
+    result <- if Set.member trgt rebuildSet
+              then case Map.lookup trgt (dependencyRule graph) of
                        Just rule -> executeRecipe (recipe rule)
                        Nothing -> return (Right ())
               else return (Right ())
     case result of
         Right () -> rebuildGraph graph rebuildSet rest
-        Left err -> return (Left (err { failedTarget = target }))
+        Left err -> return (Left (err { failedTarget = trgt }))
 
 executeCommand :: Command -> IO BuildResult
 executeCommand (Shell command) = do

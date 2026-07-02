@@ -1,0 +1,20 @@
+target app : main.o util.o config.h {
+  echo "linking final executable"
+  shell "cat main.o util.o > app.out"
+  echo "build complete: app.out"
+}
+
+target main.o : main.c common.h {
+  echo "compiling main.c -> main.o"
+  shell "echo 'compiled main' > main.o"
+}
+
+target util.o : util.c common.h {
+  echo "compiling util.c -> util.o"
+  shell "echo 'compiled util' > util.o"
+}
+
+target common.h : config.h {
+  echo "generating common.h from config.h"
+  shell "echo 'generated header' > common.h"
+}

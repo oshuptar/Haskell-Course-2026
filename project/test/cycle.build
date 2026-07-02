@@ -1,0 +1,11 @@
+target a : b {
+  echo "building a"
+}
+
+target b : c {
+  echo "building b"
+}
+
+target c : a {
+  echo "building c"
+}

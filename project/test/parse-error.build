@@ -1,0 +1,7 @@
+target app : main.o util.o {
+  echo "this rule is fine"
+}
+
+target broken main.o {
+  echo "missing colon after target name"
+}
