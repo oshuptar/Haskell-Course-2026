@@ -63,13 +63,13 @@ parseBuildFile = do
 parseRule :: Parser Rule
 parseRule = do
     _ <- parseSymbol "target"
-    target <- parseTarget
+    trgt <- parseTarget
     _ <- parseSymbol ":"
     deps <- parseDependencies
     _ <- parseSymbol "{"
-    recipe <- parseRecipe
+    rcp <- parseRecipe
     _ <- parseSymbol "}"
-    return (Rule target deps recipe)
+    return (Rule trgt deps rcp)
 
 -- Parser a generic target
 parseTarget :: Parser Target

@@ -1,4 +1,4 @@
-module BuildSysLang.DependencyResolver (build, buildDependencyGraph, topologicalSort, DependencyGraph(..), FreshnessCheck, BuildResult(..)) where
+module BuildSysLang.DependencyResolver (build, buildDependencyGraph, topologicalSort, DependencyGraph(..), FreshnessCheck) where
 import qualified Data.Map as Map
 import Data.Map (Map)
 import BuildSysLang.AST (Target, Rule (..), BuildFile (..), Command (..))
@@ -90,7 +90,7 @@ visitNode graph trgt = do
         _ -> error "All targets must be present"
 
 buildCyclePath :: Target -> [Target] -> [Target]
-buildCyclePath trgt path = trgt : reverse (takeWhile (/= trgt) path) ++ [trgt]
+buildCyclePath trgt pth = trgt : reverse (takeWhile (/= trgt) pth) ++ [trgt]
 
 type FreshnessCheck = Target -> IO Bool -- a function which would determine whether a Target needs rebuilding
 
@@ -149,15 +149,15 @@ executeCommand (Shell command) = do
             failedCommand = Just (Shell command),
             exitInfo      = "exited with code " ++ show n
         }))
-executeCommand (Touch path) = do
-    exists <- doesFileExist path
+executeCommand (Touch pth) = do
+    exists <- doesFileExist pth
     if exists
         then do 
             time <- getCurrentTime
-            setModificationTime path time
+            setModificationTime pth time
             return (Right ())
         else do
-            writeFile path ""
+            writeFile pth ""
             return (Right ())
 executeCommand (Echo command) = do
     putStrLn command
