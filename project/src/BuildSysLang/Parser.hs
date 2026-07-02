@@ -91,6 +91,12 @@ parseRecipe = parseMany parseCommand
 parseCommand :: Parser Command
 parseCommand = parseShell <|> parseEcho <|> parseTouch
 
+parseComment :: Parser ()
+parseComment = do
+    _ <- parseChar '#'
+    _ <- parseMany (parseMatching (/= '\n'))
+    return () 
+
 parseQuotes :: Parser String
 parseQuotes = do
     _ <- parseChar '"'
@@ -150,7 +156,9 @@ parseSpace :: Parser Char
 parseSpace = parseMatching isSpace
 
 parseSpaces :: Parser ()
-parseSpaces = do { _ <- parseMany parseSpace; return () }
+parseSpaces = do
+    _ <- parseMany ((parseSpace >> return ()) <|> parseComment)
+    return ()
 
 parseToken :: Parser a -> Parser a
 parseToken parser = do { value <- parser; parseSpaces; return value }

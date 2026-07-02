@@ -1,6 +1,6 @@
 target app : main.o util.o config.h {
   echo "linking final executable"
-  shell "cat main.o util.o > app.out"
+  shell "cat main.o util.o > app.out"  # comment after command
   echo "build complete: app.out"
 }
 
